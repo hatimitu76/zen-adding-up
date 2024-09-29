@@ -1,1 +1,50 @@
+//@ts-check
 'use strict';
+
+const fs = require('node:fs');
+const readline = require('node:readline');
+
+const readStream = fs.createReadStream("./popu-pref.csv")
+const readLineStream = readline.createInterface({ input: readStream })
+const prefectureDataMap = new Map()
+
+readLineStream.on("line", lineString => {
+  const columns = lineString.split(",")
+  const year = parseInt(columns[0])
+  const prefecture = columns[1]
+  const popu = parseInt(columns[2])
+
+  if (year === 2016 || year === 2021) {
+    let value = null
+    if (prefectureDataMap.has(prefecture)) {
+      value = prefectureDataMap.get(prefecture)
+    } else {
+      value = {
+        before: 0,
+        after: 0,
+        change: null
+      };
+    }
+    if (year === 2016) {
+      value.before = popu
+    }
+    if (year === 2021) {
+      value.after = popu
+    }
+    prefectureDataMap.set(prefecture, value)
+  }
+})
+
+readLineStream.on("close", () => {
+  for (const [key, value] of prefectureDataMap) {
+    value.change = (value.after + 0.000) / value.before
+  }
+
+  const rankingArray = Array.from(prefectureDataMap).sort((pair1, pair2) => {
+    return pair1[1].change - pair2[1].change
+  })
+
+  const rankingStrings = rankingArray.map(([key, value]) => {
+    console.log(`${key}: ${value.before} => ${value.after} 変化率: ${value.change}`)
+  })
+})
